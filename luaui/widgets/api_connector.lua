@@ -13,6 +13,7 @@ local commands = {} -- table with possible commands
 local Connector = {
 	callbacks = {}, -- name based callbacks
 	commandQueue = {},
+	enabled = true,
 }
 
 --------------------------------------------------------------------------------
@@ -83,13 +84,14 @@ end
 
 -- init
 function widget:Initialize()
-    WG.Connector = Connector
+	WG.Connector = Connector
 
 	local modOpts = Spring.GetModOptions()
 	host = modOpts._sl_address
 	port = modOpts._sl_port
 	if not port or not host then
-		Spring.Log(LOG_SECTION, LOG.ERROR, "Missing connection details in ModOptions")
+		Spring.Log(LOG_SECTION, LOG.NOTICE, "Missing connection details in ModOptions. Assuming non-dev mode.")
+		WG.Connector.enabled = false -- TODO: maybe better way to toggle this (e.g. when this widget errors)
 		widgetHandler:RemoveWidget(self)
 		return
 	end
