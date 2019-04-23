@@ -1,6 +1,6 @@
-VFS.Include("libs/json.lua")
+VFS.Include(JSON_LIB_PATH, nil, VFS.MOD)
 
-local LOG_SECTION = "connector"
+local LOG_SECTION = "spring-launcher"
 
 local socket = socket
 
@@ -35,13 +35,33 @@ function Connector.Register(name, callback)
 	end
 	table.insert(Connector.callbacks[name], callback)
 end
+
+Connector.Register("LoadExtensionFailed", function(command)
+	Spring.Log(LOG_SECTION, LOG.ERROR, command.error)
+end)
+
+function Connector.Unregister(name, callback)
+	if not Connector.callbacks[name] then
+		return
+	end
+	for i, clb in ipairs(Connector.callbacks[name]) do
+		if clb == callback then
+			table.remove(Connector.callbacks[name], i)
+			return
+		end
+	end
+	Spring.Log(LOG_SECTION, LOG.ERROR, "No callback to remove: ", name)
+end
 --------------------------------------------------------------------------------
 -- End of Public interface
 --------------------------------------------------------------------------------
 
 function Connector._SendCommandImmediate(command)
 	Spring.Log(LOG_SECTION, LOG.INFO, "Connector.SendCommand(...)")
+	local msg = table.show(command)
+	Spring.Log(LOG_SECTION, LOG.INFO, msg)
 	local encoded = json.encode(command)
+	Spring.Log(LOG_SECTION, LOG.INFO, encoded)
 	client:send(encoded .. "\n")
 end
 
@@ -60,9 +80,9 @@ local function explode(div,str)
 	if div == '' then
 		return false
 	end
-	local pos,arr = 0, {}
+	local pos, arr = 0, {}
 	-- for each divider found
-	for st,sp in function() return string.find(str,div,pos,true) end do
+	for st, sp in function() return string.find(str,div,pos,true) end do
 		table.insert(arr,string.sub(str,pos,st-1)) -- Attach chars left of current divider
 		pos = sp + 1 -- Jump past current divider
 	end
@@ -71,12 +91,12 @@ local function explode(div,str)
 end
 
 local function SocketConnect()
-	client=socket.tcp()
+	client = socket.tcp()
 	client:settimeout(0)
-	res, err = client:connect(host, port)
-	if not res and not res=="timeout" then
+	local res, err = client:connect(host, port)
+	if not res and not res == "timeout" then
 		widgetHandler:RemoveWidget(self)
-		Spring.Log("connector", "error", "Error in connect wrapper: " .. err)
+		Spring.Log(LOG_SECTION, LOG.ERROR, "Error in connect launcher: " .. err)
 		return false
 	end
 	return true
@@ -95,6 +115,10 @@ function widget:Initialize()
 		widgetHandler:RemoveWidget(self)
 		return
 	end
+	Connector.Send("LoadArchiveExtensions", {
+		archivePath = VFS.GetArchivePath(Game.gameName .. " " .. Game.gameVersion)
+	})
+
 	Spring.Log(LOG_SECTION, LOG.NOTICE, "Connecting to " ..
 		tostring(host) .. ":" .. tostring(port))
 	SocketConnect(host, port)
@@ -117,7 +141,8 @@ local function CommandReceived(command)
 	end
 
 	for _, callback in pairs(Connector.callbacks[name]) do
-		local success, err = pcall(function()
+		local err
+		success, err = pcall(function()
 			callback(params)
 		end)
 		if not success then
@@ -139,11 +164,13 @@ function widget:Update()
 		SocketConnect(host, port)
 		return
 	end
-	Connector._FlushCommandQueue()
+	if isConnected then
+		Connector._FlushCommandQueue()
+	end
 
 	local readable, writeable, err = socket.select({client}, {client}, 0)
 	if err ~= nil and err ~= "timeout" then
-		Spring.Log(LOG_SECTION, "warning", "connector error in select", err)
+		Spring.Log(LOG_SECTION, "warning", "spring-launcher error in select", err)
 		--Echo("Error in select: " .. err)
 	end
 	for _, input in ipairs(readable) do
