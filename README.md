@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/gajop/spring-launcher-lib.svg?branch=master)](https://travis-ci.org/gajop/spring-launcher-lib)
+
 # spring-launcher-lib
 Lua library for spring-launcher
 
