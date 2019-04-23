@@ -2,13 +2,10 @@ VFS.Include(JSON_LIB_PATH, nil, VFS.MOD)
 
 local LOG_SECTION = "spring-launcher"
 
-local socket = socket
-
 local host, port
 local client
 local isConnected = false
 local buffer = ""
-local commands = {} -- table with possible commands
 
 local Connector = {
 	callbacks = {}, -- name based callbacks
@@ -90,7 +87,7 @@ local function explode(div,str)
 	return arr
 end
 
-local function SocketConnect()
+function widget:SocketConnect()
 	client = socket.tcp()
 	client:settimeout(0)
 	local res, err = client:connect(host, port)
@@ -121,7 +118,7 @@ function widget:Initialize()
 
 	Spring.Log(LOG_SECTION, LOG.NOTICE, "Connecting to " ..
 		tostring(host) .. ":" .. tostring(port))
-	SocketConnect(host, port)
+	self:SocketConnect(host, port)
 end
 
 -- pocesses raw string line and executes command
@@ -155,40 +152,42 @@ end
 
 -- update socket - receive data and split into lines
 function widget:Update()
-	isConnected = false
-	if client then
-		if client:getpeername() then
-			isConnected = true
-		end
-	elseif client == nil then
-		SocketConnect(host, port)
+	isConnected = client ~= nil and client:getpeername()
+	if not isConnected then
+		self:SocketConnect(host, port)
 		return
 	end
-	if isConnected then
-		Connector._FlushCommandQueue()
-	end
+	Connector._FlushCommandQueue()
 
-	local readable, writeable, err = socket.select({client}, {client}, 0)
+	self:ReadAvailableSockets()
+end
+
+function widget:ReadAvailableSockets()
+	local readable, _, err = socket.select({client}, {client}, 0)
 	if err ~= nil and err ~= "timeout" then
 		Spring.Log(LOG_SECTION, "warning", "spring-launcher error in select", err)
-		--Echo("Error in select: " .. err)
+		return
 	end
-	for _, input in ipairs(readable) do
-		local s, status, str = input:receive('*a') --try to read all data
-		if (status == "timeout" or status == nil) and str ~= nil and str ~= "" then
-			local commandList = explode("\n", str)
-			commandList[1] = buffer .. commandList[1]
-			for i = 1, #commandList-1 do
-				local command = commandList[i]
-				if command ~= nil then
-					CommandReceived(command)
-				end
-			end
-			buffer = commandList[#commandList]
 
+	for _, input in ipairs(readable) do
+		local _, status, str = input:receive('*a') --try to read all data
+		if (status == "timeout" or status == nil) and str ~= nil and str ~= "" then
+			self:ParseCommandsFromString(str)
 		elseif status == "closed" then
 			input:close()
 			client = nil
 		end
 	end
+end
+
+function widget:ParseCommandsFromString(str)
+	local commandList = explode("\n", str)
+	commandList[1] = buffer .. commandList[1]
+	for i = 1, #commandList-1 do
+		local command = commandList[i]
+		if command ~= nil then
+			CommandReceived(command)
+		end
+	end
+	buffer = commandList[#commandList]
 end
