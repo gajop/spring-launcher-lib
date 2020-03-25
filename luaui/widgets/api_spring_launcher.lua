@@ -55,8 +55,6 @@ end
 
 function Connector._SendCommandImmediate(command)
 	Spring.Log(LOG_SECTION, LOG.INFO, "Connector.SendCommand(...)")
-	local msg = table.show(command)
-	Spring.Log(LOG_SECTION, LOG.INFO, msg)
 	local encoded = json.encode(command)
 	Spring.Log(LOG_SECTION, LOG.INFO, encoded)
 	client:send(encoded .. "\n")
