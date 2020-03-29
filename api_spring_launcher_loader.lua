@@ -5,7 +5,9 @@
 -- Set this line to the spring-wrapper-connection installation folder
 SPRING_LAUNCHER_DIR = "libs/spring-launcher/"
 JSON_LIB_PATH = "libs/json.lua"
--- Optional. Uncomment if you have
+-- Optional. Set if you have
+LCS_LIB_PATH = nil
+PROMISE_LIB_PATH = nil
 -- LCS_LIB_PATH = "libs/lcs/LCS.lua"
 -- PROMISE_LIB_PATH = "libs/utils/promise.lua"
 
