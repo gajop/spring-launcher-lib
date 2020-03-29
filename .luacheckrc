@@ -28,5 +28,5 @@ globals = {
 
 
     -- Dependencies
-    'json'
+    'json', "Promise"
 }
