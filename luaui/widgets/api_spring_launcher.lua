@@ -10,14 +10,15 @@ local buffer = ""
 local Connector = {
 	callbacks = {}, -- name based callbacks
 	commandQueue = {},
-	enabled = true,
+	enabled = true
 }
+WG.Connector = Connector
 
 --------------------------------------------------------------------------------
 -- Public interface
 --------------------------------------------------------------------------------
-function Connector.Send(name, opt)
-	local command = { name = name, command = opt }
+function Connector.Send(name, cmd)
+	local command = { name = name, command = cmd }
 	if not isConnected then
 		table.insert(Connector.commandQueue, command)
 		return
@@ -99,8 +100,6 @@ end
 
 -- init
 function widget:Initialize()
-	WG.Connector = Connector
-
 	local modOpts = Spring.GetModOptions()
 	host = modOpts._sl_address
 	port = modOpts._sl_port
@@ -188,4 +187,15 @@ function widget:ParseCommandsFromString(str)
 		end
 	end
 	buffer = commandList[#commandList]
+end
+
+if PROMISE_LIB_PATH ~= nil and LCS_LIB_PATH ~= nil then
+	Spring.Log(LOG_SECTION, LOG.NOTICE, "Loading promise API with: PROMISE_LIB_PATH: " ..
+		tostring(PROMISE_LIB_PATH) .. " and LCS_LIB_PATH: " ..  tostring(LCS_LIB_PATH))
+	LCS = loadstring(VFS.LoadFile(LCS_LIB_PATH))
+	LCS = LCS()
+	VFS.Include(PROMISE_LIB_PATH, nil, VFS.DEF_MODE)
+	VFS.Include(SPRING_LAUNCHER_DIR .. "luaui/widgets/api_spring_launcher_promise.lua", nil, VFS.DEF_MODE)
+else
+	Spring.Log(LOG_SECTION, LOG.NOTICE, "No optional support for promise API. Missing PROMISE_LIB_PATH or LCS_LIB_PATH")
 end
